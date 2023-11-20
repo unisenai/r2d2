@@ -15,6 +15,7 @@
 #include "include/r2d2_motor.h"
 
 static void R2C_loop_move(R2Direction direction);
+static void read_sensor();
 
 //
 enum POSITION
@@ -27,72 +28,135 @@ enum POSITION
   POS_END
 };
 
-enum ITER_STATE
-{
-  ITER_DOWN,
-  ITER_UP
-};
-
 // Local variables
-volatile int8_t iter = POS_INITIAL;
-volatile int8_t iter_stt = ITER_DOWN;
-volatile bool started = false;
+volatile int8_t position = POS_INITIAL;
+volatile bool found_block = false;
+
+uint16_t sensorValue = MIN_VALUE_FOR_BLOCK;
+
+unsigned long timer_start_block = 0;
+unsigned long timer_end_block = 0;
+
+unsigned long timer_start_free = 0;
+unsigned long timer_end_free = 0;
+
+volatile unsigned long timer_start_rotate = 0;
+volatile unsigned long timer_end_rotate = 0;
+volatile unsigned long timer_pass_rotate = 0;
 
 // Function to watch for the proximity sensor and reacts accordingly
 void R2C_proximity_watcher()
 {
-  if (started)
+
+  // Serial.print("  >> rotating: ");
+  // Serial.println(rotating);
+
+  // if (rotating)
+  // {
+  //   timer_pass_rotate = micros() - timer_start_rotate;
+  //   R2M_rotate_left(TIME_ANGLE_90);
+  // }
+  // else
+    read_sensor();
+}
+
+static void read_sensor()
+{
+  if (rotating)
+    return;
+
+  delayMicroseconds(500);
+  // We need to STOP IMMEDIATELY because we either found a blocker or a clear path
+  //    and in any case we need to quickly react changing the direction of our movement!
+
+  if (!found_block)
   {
-    // We need to STOP IMMEDIATELY because we either found a blocker or a clear path
-    //    and in any case we need to quickly react changing the direction of our movement!
     R2M_release_all();
+    delayMicroseconds(500);
 
-    // We check if we identified a blocker or a clear path in front of us
-    if (iter_stt == ITER_DOWN)
+    // We immediately change the variable to prevent other calls to enter the loop
+    //  and this works as a poor-man lock mechanism
+    found_block = true;
+    bool first_iter = true;
+
+    while (started)
     {
-      // Ok, the previous state was DOWN meaning we found something blocking our way.
-      // We move the iteration to the next obstacle
-      iter++;
+      // We check the sensor to make sure we found a block
+      sensorValue = analogRead(DISTANCE_PIN);
 
-      /**
-      We also identify the state of our interrupt signal if UP or DOWN
-         and in this case we received an UP signal, meaning the signal level
-         went from DOWN to UP, so we have a logical high level input in the PIN now.
-      Important to note that the signal will keep HIGH while there is an obstacle in the
-         defined range. The range is mechanically configured using the trimpots in the
-         controller panel.
-      */
-      iter_stt = ITER_UP;
+      // Yes, we found a block!
+      if (sensorValue > MIN_VALUE_FOR_BLOCK)
+      {
+        Serial.print("Sensor Value: ");
+        Serial.println(sensorValue);
 
-      // Checking if we have the WAL in front of us
-      if (iter == POS_WALL)
-      {
-        // We got to the WAL, we need to do a 90 degrees turn to the LEFT and move forward
-        R2C_loop_move(dir_right);
+        // We check if this is the first iteration for this loop and increment the position
+        if (first_iter)
+        {
+          // We just do a sanity check to make sure we don't increment the position in a too short time.
+          // It prevents sensor misreads to cause our logic to go wrong!
+          timer_end_block = micros();
+          first_iter = false;
+
+          // Ok, it's more than MIN_TIME_BETWEEN_READS microseconds
+          if (!timer_start_block || (timer_end_block - timer_start_block) > MIN_TIME_BETWEEN_READS)
+            position++;
+
+          // We restart our time counter
+          timer_start_block = micros();
+        }
+
+        // Checking if we have the WAL in front of us
+        if (position == POS_WALL)
+        {
+          // We got to the WAL, we need to do a 90 degrees turn to the LEFT and move forward
+          noInterrupts();
+          R2M_rotate_left(TIME_ANGLE_90);
+          interrupts();
+        }
+        else if (position == POS_END)
+        {
+          // We got to the end of the line, time to make sure we stop
+          R2M_release_all();
+          delayMicroseconds(500);
+
+          // Now we just change the STARTED flag to FALSE
+          started = false;
+          // found_block = false;
+          // rotating = false;
+          // position = POS_INITIAL;
+        }
+        else
+        {
+          // We just have another block, so moving to the RIGHT
+          R2M_move_right();
+        }
       }
-      else if (iter == POS_END)
-      {
-        // We got to the end of the line, time to stop, meaning we DO NOTHING with the engines because we are already stopped!
-        // Just change the STARTED flag to FALSE
-        started = false;
-      }
+
+      // It seems we got a free path
       else
       {
-        // We just have another block, so moving to the RIGHT
-        R2M_rotate_left(TIME_ANGLE_90);
-        R2C_loop_move(dir_forward);
-      }
-    }
-    else
-    {
-      /**
-      We identified the signal went down, which means we don't have any obstacle in front of us.
-      This means we can move forward!
-      */
-      iter_stt = ITER_DOWN;
+        found_block = false;
+        R2M_move_fw();
 
-      // Time to move FORWARD!
-      R2C_loop_move(dir_forward);
+        Serial.println("Free path!");
+        Serial.print("Position: ");
+        Serial.println(position);
+
+        //
+        timer_end_free = micros();
+        if (!timer_start_free || timer_end_free - timer_start_free < MIN_TIME_BETWEEN_READS)
+          return;
+
+        // We only have one front sensor, so we'll keep moving for more 500ms to make sure we don't collide to the block
+        R2M_release_all();
+        delayMicroseconds(500);
+
+        //
+        timer_start_free = micros();
+
+        return;
+      }
     }
   }
 }
@@ -100,30 +164,10 @@ void R2C_proximity_watcher()
 // Function that starts and/or shuts down the AGV
 void R2C_power_watcher()
 {
-
   Serial.println("Starting!!!!");
 
-  if (started)
-    R2C_loop_move(dir_forward);
-  else
-    R2M_move_fw();
-
-  started = !started;
-}
-
-
-static void R2C_loop_move(R2Direction direction)
-{
-  while(true)
-  {
-    switch(direction)
-    {
-      case dir_forward: R2M_move_fw(); break;
-      case dir_backward: R2M_move_bw(); break;
-      case dir_left: R2M_move_left(); break;
-      case dir_right: R2M_move_right(); break;
-    }
-
-    delay(1000);
-  }
+  // We reset the variables
+  // found_block = false;
+  // position = POS_INITIAL;
+  started = true;
 }

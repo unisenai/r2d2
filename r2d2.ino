@@ -9,18 +9,14 @@
  *
  */
 
-#include <PinChangeInterrupt.h>
-
 #include "src/include/r2d2.h"
 #include "src/include/r2d2_motor.h"
 
 // DEBUG
 char receivedChar;
 boolean newData = false;
-
-// Local variables
-#define PROXIMITY_PIN 2
-#define POWER_PIN A0
+volatile bool started;
+volatile bool rotating;
 
 void setup()
 {
@@ -32,16 +28,55 @@ void setup()
   R2M_set_speed_all(MAX_SPEED);
   R2M_release_all();
 
-  // Configure the interrupt on PROXIMITY_PIN
+  // Configure the interrupt on PROXIMITY_INTER_PIN
   // This interrupt will be triggered by the proximity sensor HC-SR04
   // We are waiting for any change, either when raising or falling signal on the pin
-  attachInterrupt(digitalPinToInterrupt(PROXIMITY_PIN), R2C_proximity_watcher, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PROXIMITY_INTER_PIN), R2C_proximity_watcher, RISING);
 
   // Startup interrupt function
-  attachPinChangeInterrupt(POWER_PIN, R2C_power_watcher, CHANGE); // interrupt connected to pin A0
+  pinMode(POWER_INTER_PIN, INPUT_PULLUP);
+
+  // Enable PCIE0 Bit0 = 1 (Port B)
+  PCICR |= (1 << PCIE1);
+
+  // Select PCINT8 Bit0 = 1 (Pin A0)
+  PCMSK1 = (1 << PCINT8); // A0
+
+  // Initialize global variables
+  started = false;
+  rotating = false;
+}
+
+// Boolean to represent toggle state for the POWER button
+volatile bool togglestate = false;
+
+ISR(PCINT1_vect)
+{
+  if(started)
+    return;
+
+  togglestate = !togglestate;
+
+  Serial.println("Button Pressed!!");
+
+  // Only acts when release the button
+  if (!togglestate)
+  {
+    R2C_power_watcher();
+  }
 }
 
 void loop()
+{
+  if(started)
+  {
+    R2M_move_fw();
+  }
+
+  delay(100);
+}
+
+void loops()
 {
   recvOneChar();
   if (newData == true)

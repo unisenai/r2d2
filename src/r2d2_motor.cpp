@@ -86,6 +86,8 @@ void R2M_release_all()
 // Rotates the car to the left up to the specified angle
 void R2M_rotate_left(uint32_t time)
 {
+  rotating = true;
+  timer_start_rotate = micros() - timer_pass_rotate;
   R2M_set_speed(&m_lf, 0);
   R2M_set_speed(&m_lb, ANGLE_SPEED);
   R2M_set_speed(&m_rf, ANGLE_SPEED);
@@ -98,4 +100,5 @@ void R2M_rotate_left(uint32_t time)
   delay(time);
   R2M_release_all();
   R2M_set_speed_all(MAX_SPEED);
+  timer_end_rotate = micros();
 }
