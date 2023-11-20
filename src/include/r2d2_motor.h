@@ -55,12 +55,6 @@ typedef enum
 // Time to move to certain angle
 #define TIME_ANGLE_90 850
 
-//
-extern volatile bool rotating;
-extern volatile unsigned long timer_start_rotate;
-extern volatile unsigned long timer_end_rotate;
-extern volatile unsigned long timer_pass_rotate;
-
 // Moves the car forward
 void R2M_move_fw();
 

@@ -16,7 +16,6 @@
 char receivedChar;
 boolean newData = false;
 volatile bool started;
-volatile bool rotating;
 
 void setup()
 {
@@ -44,7 +43,6 @@ void setup()
 
   // Initialize global variables
   started = false;
-  rotating = false;
 }
 
 // Boolean to represent toggle state for the POWER button

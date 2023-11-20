@@ -17,7 +17,7 @@
 #define POWER_INTER_PIN A0
 #define DISTANCE_PIN A5
 #define MIN_VALUE_FOR_BLOCK 800
-#define MIN_TIME_BETWEEN_READS (1 * 1000 * 1000) // From micros to millis
+#define MIN_TIME_BETWEEN_READS 1000
 
 extern volatile bool started;
 

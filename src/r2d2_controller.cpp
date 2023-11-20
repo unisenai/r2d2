@@ -31,33 +31,20 @@ enum POSITION
 // Local variables
 volatile int8_t position = POS_INITIAL;
 volatile bool found_block = false;
+volatile bool rotating = false;
 
 uint16_t sensorValue = MIN_VALUE_FOR_BLOCK;
 
-unsigned long timer_start_block = 0;
-unsigned long timer_end_block = 0;
+unsigned long start_timer_block = 0;
+unsigned long end_timer_block = 0;
 
-unsigned long timer_start_free = 0;
-unsigned long timer_end_free = 0;
-
-volatile unsigned long timer_start_rotate = 0;
-volatile unsigned long timer_end_rotate = 0;
-volatile unsigned long timer_pass_rotate = 0;
+unsigned long start_timer_free = 0;
+unsigned long end_timer_free = 0;
 
 // Function to watch for the proximity sensor and reacts accordingly
 void R2C_proximity_watcher()
 {
-
-  // Serial.print("  >> rotating: ");
-  // Serial.println(rotating);
-
-  // if (rotating)
-  // {
-  //   timer_pass_rotate = micros() - timer_start_rotate;
-  //   R2M_rotate_left(TIME_ANGLE_90);
-  // }
-  // else
-    read_sensor();
+  read_sensor();
 }
 
 static void read_sensor()
@@ -65,14 +52,14 @@ static void read_sensor()
   if (rotating)
     return;
 
-  delayMicroseconds(500);
+  delayMicroseconds(5);
   // We need to STOP IMMEDIATELY because we either found a blocker or a clear path
   //    and in any case we need to quickly react changing the direction of our movement!
 
   if (!found_block)
   {
     R2M_release_all();
-    delayMicroseconds(500);
+    // delayMicroseconds(500);
 
     // We immediately change the variable to prevent other calls to enter the loop
     //  and this works as a poor-man lock mechanism
@@ -95,30 +82,27 @@ static void read_sensor()
         {
           // We just do a sanity check to make sure we don't increment the position in a too short time.
           // It prevents sensor misreads to cause our logic to go wrong!
-          timer_end_block = micros();
+          end_timer_block = millis();
           first_iter = false;
 
           // Ok, it's more than MIN_TIME_BETWEEN_READS microseconds
-          if (!timer_start_block || (timer_end_block - timer_start_block) > MIN_TIME_BETWEEN_READS)
+          if (!start_timer_block || (end_timer_block - start_timer_block) > MIN_TIME_BETWEEN_READS)
             position++;
 
           // We restart our time counter
-          timer_start_block = micros();
+          start_timer_block = millis();
         }
 
         // Checking if we have the WAL in front of us
         if (position == POS_WALL)
         {
           // We got to the WAL, we need to do a 90 degrees turn to the LEFT and move forward
-          noInterrupts();
           R2M_rotate_left(TIME_ANGLE_90);
-          interrupts();
         }
         else if (position == POS_END)
         {
           // We got to the end of the line, time to make sure we stop
           R2M_release_all();
-          delayMicroseconds(500);
 
           // Now we just change the STARTED flag to FALSE
           started = false;
@@ -144,8 +128,8 @@ static void read_sensor()
         Serial.println(position);
 
         //
-        timer_end_free = micros();
-        if (!timer_start_free || timer_end_free - timer_start_free < MIN_TIME_BETWEEN_READS)
+        end_timer_free = millis();
+        if (!start_timer_free || end_timer_free - start_timer_free < MIN_TIME_BETWEEN_READS)
           return;
 
         // We only have one front sensor, so we'll keep moving for more 500ms to make sure we don't collide to the block
@@ -153,7 +137,7 @@ static void read_sensor()
         delayMicroseconds(500);
 
         //
-        timer_start_free = micros();
+        start_timer_free = millis();
 
         return;
       }
