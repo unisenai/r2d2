@@ -33,8 +33,27 @@ typedef enum
   motor_lf
 } R2Motor;
 
+typedef enum
+{
+  // Motor in the RIGHT-FRONT side
+  dir_forward,
+
+  // Motor in the RIGHT-BACK side
+  dir_backward,
+
+  // Motor in the LEFT-BACK side
+  dir_left,
+
+  // Motor in the LEFT-FRONT side
+  dir_right
+} R2Direction;
+
 // We define the maximum speed the motors will run
 #define MAX_SPEED 200
+#define ANGLE_SPEED 200
+
+// Time to move to certain angle
+#define TIME_ANGLE_90 850
 
 // Moves the car forward
 void R2M_move_fw();
@@ -59,5 +78,8 @@ void R2M_set_speed_all(uint8_t speed);
 
 // Sets speed for a specific motor
 void R2M_set_speed(AF_DCMotor *motor, uint8_t speed);
+
+// Rotates the car to the left up to the specified angle
+void R2M_rotate_left(uint32_t time);
 
 #endif // __R2D2_MOTOR_H__

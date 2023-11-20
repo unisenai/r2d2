@@ -9,6 +9,8 @@
  *
  */
 
+#include <Arduino.h>
+
 #include "include/r2d2_motor.h"
 
 // We create the Motor objects
@@ -79,4 +81,21 @@ void R2M_release_all()
   m_lb.run(RELEASE);
   m_rf.run(RELEASE);
   m_rb.run(RELEASE);
+}
+
+// Rotates the car to the left up to the specified angle
+void R2M_rotate_left(uint32_t time)
+{
+  R2M_set_speed(&m_lf, 0);
+  R2M_set_speed(&m_lb, ANGLE_SPEED);
+  R2M_set_speed(&m_rf, ANGLE_SPEED);
+  R2M_set_speed(&m_rb, 0);
+
+  m_lf.run(RELEASE);
+  m_lb.run(BACKWARD);
+  m_rf.run(FORWARD);
+  m_rb.run(RELEASE);
+  delay(time);
+  R2M_release_all();
+  R2M_set_speed_all(MAX_SPEED);
 }

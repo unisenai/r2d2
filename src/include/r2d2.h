@@ -12,7 +12,10 @@
 #ifndef __R2D2_H__
 #define __R2D2_H__
 
-// Function that starts and shuts down the AGV
-void power();
+// Function to watch for the proximity sensor and reacts accordingly
+void R2C_proximity_watcher();
+
+// Function that starts and/or shuts down the AGV
+void R2C_power_watcher();
 
 #endif  // __R2D2_H__

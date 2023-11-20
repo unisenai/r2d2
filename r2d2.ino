@@ -9,11 +9,10 @@
  *
  */
 
-#include <PinChangeInt.h>
+#include <PinChangeInterrupt.h>
 
 #include "src/include/r2d2.h"
 #include "src/include/r2d2_motor.h"
-#include "src/include/r2d2_map1.h"
 
 // DEBUG
 char receivedChar;
@@ -22,62 +21,68 @@ boolean newData = false;
 // Local variables
 #define PROXIMITY_PIN 2
 #define POWER_PIN A0
-volatile int8_t iter = 0;
-volatile bool started = false;
 
 void setup()
 {
+  // Debug
+  Serial.begin(115200);
+  Serial.println("<Arduino is ready>");
+
+  // Reset the motors
   R2M_set_speed_all(MAX_SPEED);
   R2M_release_all();
 
-  // Debug
-  Serial.begin(9600);
-  Serial.println("<Arduino is ready>");
-
   // Configure the interrupt on PROXIMITY_PIN
   // This interrupt will be triggered by the proximity sensor HC-SR04
-  // We are waiting for any change, either when raising or falling signal on the pin  
-  attachInterrupt(digitalPinToInterrupt(PROXIMITY_PIN), proximity_watcher, CHANGE);
+  // We are waiting for any change, either when raising or falling signal on the pin
+  attachInterrupt(digitalPinToInterrupt(PROXIMITY_PIN), R2C_proximity_watcher, CHANGE);
 
   // Startup interrupt function
-  attachPinChangeInterrupt(POWER_PIN, power, CHANGE); // interrupt connected to pin 11
+  attachPinChangeInterrupt(POWER_PIN, R2C_power_watcher, CHANGE); // interrupt connected to pin A0
 }
 
 void loop()
 {
   recvOneChar();
-  if(newData == true)
+  if (newData == true)
   {
     switch (receivedChar)
     {
-      case '1':
-        R2M_move_fw();
-        break;
-      case '2':
-        R2M_move_bw();
-        break;
-      case '3':
-        R2M_move_left();
-        break;
-      case '4':
-        R2M_move_right();
-        break;
+    case '1':
+      R2M_move_fw();
+      break;
+    case '2':
+      R2M_move_bw();
+      break;
+    case '3':
+      R2M_move_left();
+      break;
+    case '4':
+      R2M_move_right();
+      break;
 
-      default:
-        Serial.print("This just in ... ");
-        Serial.println(receivedChar);
+    case '5':
+      R2M_rotate_left(TIME_ANGLE_90);
+      break;
+    default:
+      Serial.print("This just in ... ");
+      Serial.println(receivedChar);
     }
 
-    delay(300);
-    R2M_release_all();
+    if (receivedChar != '5')
+    {
+      delay(300);
+      R2M_release_all();
+    }
     newData = false;
   }
-  
 }
 
-void recvOneChar() {
-    if (Serial.available() > 0) {
-        receivedChar = Serial.read();
-        newData = true;
-    }
+void recvOneChar()
+{
+  if (Serial.available() > 0)
+  {
+    receivedChar = Serial.read();
+    newData = true;
+  }
 }
