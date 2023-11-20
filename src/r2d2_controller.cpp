@@ -17,21 +17,7 @@
 static void R2C_loop_move(R2Direction direction);
 static void read_sensor();
 
-//
-enum POSITION
-{
-  POS_INITIAL = 0,
-  POS_OBSTACLE_1,
-  POS_OBSTACLE_2,
-  POS_OBSTACLE_3,
-  POS_WALL,
-  POS_END
-};
-
-// Local variables
-volatile int8_t position = POS_INITIAL;
-volatile bool found_block = false;
-volatile bool rotating = false;
+volatile bool interrupt_attached = true;
 
 uint16_t sensorValue = MIN_VALUE_FOR_BLOCK;
 
@@ -44,26 +30,32 @@ unsigned long end_timer_free = 0;
 // Function to watch for the proximity sensor and reacts accordingly
 void R2C_proximity_watcher()
 {
+  Serial.println(" <<<<< INTERRUPT >>>>>");
   read_sensor();
 }
 
 static void read_sensor()
 {
-  if (rotating)
-    return;
-
   delayMicroseconds(5);
-  // We need to STOP IMMEDIATELY because we either found a blocker or a clear path
-  //    and in any case we need to quickly react changing the direction of our movement!
 
   if (!found_block)
   {
-    R2M_release_all();
-    // delayMicroseconds(500);
 
     // We immediately change the variable to prevent other calls to enter the loop
     //  and this works as a poor-man lock mechanism
     found_block = true;
+
+    // We then IMMEDIATELY stop because we found a blocker
+    //    and we need to quickly react changing the direction of our movement!
+    R2M_release_all();
+    // delayMicroseconds(500);
+
+    // We temporarily disable the PROXIMITY INTERRUPT because we'll work inside the WHILE loop
+    // clearInterrupt(digitalPinToInterrupt(PROXIMITY_INTER_PIN));
+    Serial.println("  >>>>> DETACH INTERRUPT <<<<<");
+    detachInterrupt(digitalPinToInterrupt(PROXIMITY_INTER_PIN));
+    interrupt_attached = false;
+
     bool first_iter = true;
 
     while (started)
@@ -97,11 +89,13 @@ static void read_sensor()
         if (position == POS_WALL)
         {
           // We got to the WAL, we need to do a 90 degrees turn to the LEFT and move forward
-          R2M_rotate_left(TIME_ANGLE_90);
+          R2M_rotate_left(1);
+
+          // goto ENABLE_AND_EXIT;
         }
         else if (position == POS_END)
         {
-          // We got to the end of the line, time to make sure we stop
+          // We got to the end of the line, time to make sure we FORCE stop
           R2M_release_all();
 
           // Now we just change the STARTED flag to FALSE
@@ -130,7 +124,10 @@ static void read_sensor()
         //
         end_timer_free = millis();
         if (!start_timer_free || end_timer_free - start_timer_free < MIN_TIME_BETWEEN_READS)
-          return;
+        {
+          attachInterrupt(digitalPinToInterrupt(PROXIMITY_INTER_PIN), R2C_proximity_watcher, RISING);
+          goto ENABLE_AND_EXIT;
+        }
 
         // We only have one front sensor, so we'll keep moving for more 500ms to make sure we don't collide to the block
         R2M_release_all();
@@ -138,9 +135,15 @@ static void read_sensor()
 
         //
         start_timer_free = millis();
-
-        return;
+        goto ENABLE_AND_EXIT;
       }
+    }
+
+  ENABLE_AND_EXIT:
+    if (!interrupt_attached)
+    {
+      Serial.println("  >>>>> ATTACH INTERRUPT <<<<<");
+      attachInterrupt(digitalPinToInterrupt(PROXIMITY_INTER_PIN), R2C_proximity_watcher, RISING);
     }
   }
 }

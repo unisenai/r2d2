@@ -86,16 +86,36 @@ void R2M_release_all()
 // Rotates the car to the left up to the specified angle
 void R2M_rotate_left(uint32_t time)
 {
+  unsigned int t1, t2;
+
   R2M_set_speed(&m_lf, 0);
   R2M_set_speed(&m_lb, ANGLE_SPEED);
   R2M_set_speed(&m_rf, ANGLE_SPEED);
   R2M_set_speed(&m_rb, 0);
 
-  m_lf.run(RELEASE);
-  m_lb.run(BACKWARD);
-  m_rf.run(FORWARD);
-  m_rb.run(RELEASE);
-  delay(time);
+  t1 = t2 = micros();
+  while ((t2 - t1) < (TIME_ANGLE_90 * 1000 * 1000))
+  {
+    m_lf.run(RELEASE);
+    m_lb.run(BACKWARD);
+    m_rf.run(FORWARD);
+    m_rb.run(RELEASE);
+
+    // delayMicroseconds(500);
+    delay(1000);
+    t2 = micros();
+
+    Serial.print(" #### Diff: (t1: ");
+    Serial.print(t1);
+    Serial.print(")    (t2: ");
+    Serial.print(t2);
+    Serial.print(")    (t2 - t1: ");
+    Serial.println((t2 - t1));
+    Serial.print(")");
+
+    delay(1000);
+  }
+
   R2M_release_all();
   R2M_set_speed_all(MAX_SPEED);
 }

@@ -15,6 +15,8 @@
 //
 #include <AFMotor.h>
 
+#include "r2d2_const.h"
+
 // We firstly define the position of the DC motors
 // We are using 4 DC motors in this project controlled by one
 //  L293D H-Bridge Motor Driver shield
@@ -47,13 +49,6 @@ typedef enum
   // Motor in the LEFT-FRONT side
   dir_right
 } R2Direction;
-
-// We define the maximum speed the motors will run
-#define MAX_SPEED 200
-#define ANGLE_SPEED 200
-
-// Time to move to certain angle
-#define TIME_ANGLE_90 850
 
 // Moves the car forward
 void R2M_move_fw();

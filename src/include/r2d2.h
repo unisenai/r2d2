@@ -12,14 +12,27 @@
 #ifndef __R2D2_H__
 #define __R2D2_H__
 
-// PIN definitions
-#define PROXIMITY_INTER_PIN 2
-#define POWER_INTER_PIN A0
-#define DISTANCE_PIN A5
-#define MIN_VALUE_FOR_BLOCK 800
-#define MIN_TIME_BETWEEN_READS 1000
+#include "r2d2_const.h"
 
+//
+enum POSITION
+{
+  POS_INITIAL = 0,
+  POS_OBSTACLE_1,
+  POS_OBSTACLE_2,
+  POS_OBSTACLE_3,
+  POS_WALL,
+  POS_END
+};
+
+// 
 extern volatile bool started;
+
+// 
+extern volatile int8_t position;
+
+// 
+extern volatile bool found_block;
 
 // Function to watch for the proximity sensor and reacts accordingly
 void R2C_proximity_watcher();

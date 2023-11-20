@@ -12,10 +12,9 @@
 #include "src/include/r2d2.h"
 #include "src/include/r2d2_motor.h"
 
-// DEBUG
-char receivedChar;
-boolean newData = false;
 volatile bool started;
+volatile int8_t position;
+volatile bool found_block;
 
 void setup()
 {
@@ -43,6 +42,8 @@ void setup()
 
   // Initialize global variables
   started = false;
+  position = POS_INITIAL;
+  found_block = false;
 }
 
 // Boolean to represent toggle state for the POWER button
@@ -50,7 +51,7 @@ volatile bool togglestate = false;
 
 ISR(PCINT1_vect)
 {
-  if(started)
+  if (started)
     return;
 
   togglestate = !togglestate;
@@ -60,62 +61,38 @@ ISR(PCINT1_vect)
   // Only acts when release the button
   if (!togglestate)
   {
+    // Disable this interrupt for now because we are getting too much noise from the DC motors
+    //    and they are causing the interrupt to auto-trigger ?!?!?!
+    PCMSK1 &= ~(1 << PCINT8);
     R2C_power_watcher();
   }
 }
 
 void loop()
 {
-  if(started)
+  if (started)
   {
-    R2M_move_fw();
+    if (found_block)
+    {
+      switch (position)
+      {
+      case POS_OBSTACLE_1:
+      case POS_OBSTACLE_2:
+      case POS_OBSTACLE_3:
+        break;
+
+      POS_WALL:
+        break;
+
+      POS_END:
+        break;
+      }
+    }
+    else
+    {
+      R2M_move_fw();
+    }
   }
 
   delay(100);
-}
-
-void loops()
-{
-  recvOneChar();
-  if (newData == true)
-  {
-    switch (receivedChar)
-    {
-    case '1':
-      R2M_move_fw();
-      break;
-    case '2':
-      R2M_move_bw();
-      break;
-    case '3':
-      R2M_move_left();
-      break;
-    case '4':
-      R2M_move_right();
-      break;
-
-    case '5':
-      R2M_rotate_left(TIME_ANGLE_90);
-      break;
-    default:
-      Serial.print("This just in ... ");
-      Serial.println(receivedChar);
-    }
-
-    if (receivedChar != '5')
-    {
-      delay(300);
-      R2M_release_all();
-    }
-    newData = false;
-  }
-}
-
-void recvOneChar()
-{
-  if (Serial.available() > 0)
-  {
-    receivedChar = Serial.read();
-    newData = true;
-  }
 }
