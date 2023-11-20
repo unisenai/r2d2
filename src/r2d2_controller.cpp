@@ -15,7 +15,6 @@
 #include "include/r2d2_motor.h"
 
 static void R2C_loop_move(R2Direction direction);
-static void read_sensor();
 
 volatile bool interrupt_attached = true;
 
@@ -30,21 +29,17 @@ unsigned long end_timer_free = 0;
 // Function to watch for the proximity sensor and reacts accordingly
 void R2C_proximity_watcher()
 {
-  Serial.println(" <<<<< INTERRUPT >>>>>");
-  read_sensor();
+  // Serial.println(" <<<<< INTERRUPT >>>>>");
+  found_block = true;
+  // read_sensor();
 }
 
-static void read_sensor()
+void R2C_read_sensor()
 {
   delayMicroseconds(5);
 
-  if (!found_block)
+  if (found_block)
   {
-
-    // We immediately change the variable to prevent other calls to enter the loop
-    //  and this works as a poor-man lock mechanism
-    found_block = true;
-
     // We then IMMEDIATELY stop because we found a blocker
     //    and we need to quickly react changing the direction of our movement!
     R2M_release_all();
@@ -91,7 +86,7 @@ static void read_sensor()
           // We got to the WAL, we need to do a 90 degrees turn to the LEFT and move forward
           R2M_rotate_left(1);
 
-          // goto ENABLE_AND_EXIT;
+          goto ENABLE_AND_EXIT;
         }
         else if (position == POS_END)
         {

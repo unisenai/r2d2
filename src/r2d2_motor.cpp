@@ -93,8 +93,8 @@ void R2M_rotate_left(uint32_t time)
   R2M_set_speed(&m_rf, ANGLE_SPEED);
   R2M_set_speed(&m_rb, 0);
 
-  t1 = t2 = micros();
-  while ((t2 - t1) < (TIME_ANGLE_90 * 1000 * 1000))
+  t1 = t2 = millis();
+ while ((t2 - t1) < TIME_ANGLE_90)
   {
     m_lf.run(RELEASE);
     m_lb.run(BACKWARD);
@@ -102,8 +102,8 @@ void R2M_rotate_left(uint32_t time)
     m_rb.run(RELEASE);
 
     // delayMicroseconds(500);
-    delay(1000);
-    t2 = micros();
+    delay(time);
+    t2 = millis();
 
     Serial.print(" #### Diff: (t1: ");
     Serial.print(t1);
@@ -113,7 +113,6 @@ void R2M_rotate_left(uint32_t time)
     Serial.println((t2 - t1));
     Serial.print(")");
 
-    delay(1000);
   }
 
   R2M_release_all();

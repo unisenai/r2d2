@@ -74,19 +74,22 @@ void loop()
   {
     if (found_block)
     {
-      switch (position)
-      {
-      case POS_OBSTACLE_1:
-      case POS_OBSTACLE_2:
-      case POS_OBSTACLE_3:
-        break;
 
-      POS_WALL:
-        break;
+      R2C_read_sensor();
 
-      POS_END:
-        break;
-      }
+      // switch (position)
+      // {
+      // case POS_OBSTACLE_1:
+      // case POS_OBSTACLE_2:
+      // case POS_OBSTACLE_3:
+      //   break;
+
+      // POS_WALL:
+      //   break;
+
+      // POS_END:
+      //   break;
+      // }
     }
     else
     {

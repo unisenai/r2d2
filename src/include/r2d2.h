@@ -40,4 +40,6 @@ void R2C_proximity_watcher();
 // Function that starts and/or shuts down the AGV
 void R2C_power_watcher();
 
+void R2C_read_sensor();
+
 #endif  // __R2D2_H__
