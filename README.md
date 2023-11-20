@@ -46,9 +46,9 @@ __[Diagrama esquemático do circúito HCSR-04 usando um NE555 como gerador de pu
 
 __[Diagrama esquemático do circúito HCSR-04 usando um NE555 como gerador de pulso]__
 
-## Dependeces 
+## Dependências 
 
-The external libraries we use in this project are listed below:
+As bibliotecas externas utilizadas neste projeto estão listadas abaixo:
 
   - PinChangeInt: Biblioteca que permite utilizar qualquer pino no Arduino pra responder a interrupções externas
   - Adafruit Motor Shield library: Utilizada para auxiliar no controle dos motores DC
