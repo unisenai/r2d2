@@ -21,7 +21,7 @@
 
 // We define the maximum speed the motors will run
 #define MAX_SPEED 200
-#define ANGLE_SPEED 220
+#define ANGLE_SPEED 180
 
 // Time to move to certain angle
 #define TIME_ANGLE_90 850

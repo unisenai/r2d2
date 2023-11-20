@@ -43,7 +43,7 @@ void R2C_read_sensor()
     // We then IMMEDIATELY stop because we found a blocker
     //    and we need to quickly react changing the direction of our movement!
     R2M_release_all();
-    // delayMicroseconds(500);
+    delay(5);
 
     // We temporarily disable the PROXIMITY INTERRUPT because we'll work inside the WHILE loop
     // clearInterrupt(digitalPinToInterrupt(PROXIMITY_INTER_PIN));
@@ -74,7 +74,10 @@ void R2C_read_sensor()
 
           // Ok, it's more than MIN_TIME_BETWEEN_READS microseconds
           if (!start_timer_block || (end_timer_block - start_timer_block) > MIN_TIME_BETWEEN_READS)
+          {
             position++;
+            delay(500);
+          }
 
           // We restart our time counter
           start_timer_block = millis();
@@ -84,6 +87,7 @@ void R2C_read_sensor()
         if (position == POS_WALL)
         {
           // We got to the WAL, we need to do a 90 degrees turn to the LEFT and move forward
+          delay(200);
           R2M_rotate_left(1);
 
           goto ENABLE_AND_EXIT;
@@ -109,8 +113,17 @@ void R2C_read_sensor()
       // It seems we got a free path
       else
       {
+        if (!first_iter)
+        {
+          R2M_move_right();
+          delay(400);
+        }
+        else
+        {
+          R2M_move_fw();
+        }
+
         found_block = false;
-        R2M_move_fw();
 
         Serial.println("Free path!");
         Serial.print("Position: ");
@@ -125,8 +138,8 @@ void R2C_read_sensor()
         }
 
         // We only have one front sensor, so we'll keep moving for more 500ms to make sure we don't collide to the block
-        R2M_release_all();
-        delayMicroseconds(500);
+        // R2M_release_all();
+        // delay(500);
 
         //
         start_timer_free = millis();
