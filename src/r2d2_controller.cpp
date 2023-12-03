@@ -52,6 +52,9 @@ void R2C_read_sensor()
     interrupt_attached = false;
 
     bool first_iter = true;
+    bool led_on = false;
+    unsigned long led_timer_in = 0;
+    unsigned long led_timer_out = 0;
 
     while (started)
     {
@@ -61,6 +64,20 @@ void R2C_read_sensor()
       // Yes, we found a block!
       if (sensorValue > MIN_VALUE_FOR_BLOCK)
       {
+        // Toggle the RED LED
+        {
+          led_timer_out = millis();
+          if (led_timer_in == 0 || (led_timer_out - led_timer_in) >= 100)
+          {
+            if(led_on)
+              digitalWrite(LED_RED_PIN, LOW);
+            else
+              digitalWrite(LED_RED_PIN, HIGH);
+            led_timer_in = millis();
+            led_on = !led_on;
+          }
+        }
+
         Serial.print("Sensor Value: ");
         Serial.println(sensorValue);
 
@@ -116,7 +133,7 @@ void R2C_read_sensor()
         if (!first_iter)
         {
           R2M_move_right();
-          delay(400);
+          delay(DELAY_TO_AVOID_COLLISION);
         }
         else
         {

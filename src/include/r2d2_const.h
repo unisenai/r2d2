@@ -15,9 +15,15 @@
 // PIN definitions
 #define PROXIMITY_INTER_PIN 2
 #define POWER_INTER_PIN A0
-#define DISTANCE_PIN A5
+#define DISTANCE_PIN A1
+#define LED_GREEN_PIN A2
+#define LED_RED_PIN A3
+
+//
 #define MIN_VALUE_FOR_BLOCK 800
 #define MIN_TIME_BETWEEN_READS 1000
+
+#define DELAY_TO_AVOID_COLLISION 400
 
 // We define the maximum speed the motors will run
 #define MAX_SPEED 200

@@ -9,6 +9,9 @@
  *
  */
 
+#include <Adafruit_SSD1306.h>
+#include <splash.h>
+
 #include "src/include/r2d2.h"
 #include "src/include/r2d2_motor.h"
 
@@ -16,7 +19,7 @@ volatile bool started;
 volatile int8_t position;
 volatile bool found_block;
 
-void setup()
+void setups()
 {
   // Debug
   Serial.begin(115200);
@@ -44,6 +47,17 @@ void setup()
   started = false;
   position = POS_INITIAL;
   found_block = false;
+
+  //
+  //
+  // print_logo();
+
+  // LED definitions
+  pinMode(LED_RED_PIN, OUTPUT);
+  pinMode(LED_GREEN_PIN, OUTPUT);
+
+  digitalWrite(LED_RED_PIN, HIGH);
+  digitalWrite(LED_GREEN_PIN, LOW);
 }
 
 // Boolean to represent toggle state for the POWER button
@@ -64,32 +78,55 @@ ISR(PCINT1_vect)
     // Disable this interrupt for now because we are getting too much noise from the DC motors
     //    and they are causing the interrupt to auto-trigger ?!?!?!
     PCMSK1 &= ~(1 << PCINT8);
+    digitalWrite(LED_RED_PIN, LOW);
+    digitalWrite(LED_GREEN_PIN, HIGH);
     R2C_power_watcher();
   }
 }
 
+#define trigPin A0
+#define echoPin A1
+
+unsigned long int duration;
+unsigned int distance;
+
+void setup()
+{
+  pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPin, INPUT);  // Sets the echoPin as an Input
+  Serial.begin(115200);
+}
+
 void loop()
+{
+  // Clears the trigPin
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  // Sets the trigPin on HIGH state for 10 micro seconds
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  // Reads the echoPin, returns the sound wave travel time in microseconds
+  duration = pulseIn(echoPin, HIGH);
+  // Calculating the distance
+  distance = duration * 0.034 / 2;
+  // Prints the distance on the Serial Monitor
+
+  Serial.print(">> Duration: ");
+  Serial.println(duration);
+
+  Serial.print("Distance: ");
+  Serial.println(distance);
+  delay(200);
+}
+
+void loops()
 {
   if (started)
   {
     if (found_block)
     {
-
       R2C_read_sensor();
-
-      // switch (position)
-      // {
-      // case POS_OBSTACLE_1:
-      // case POS_OBSTACLE_2:
-      // case POS_OBSTACLE_3:
-      //   break;
-
-      // POS_WALL:
-      //   break;
-
-      // POS_END:
-      //   break;
-      // }
     }
     else
     {
