@@ -15,11 +15,10 @@
 #include "src/include/r2d2.h"
 #include "src/include/r2d2_motor.h"
 
-volatile bool started;
-volatile int8_t position;
-volatile bool found_block;
+volatile int64_t started;
+uint8_t position;
 
-void setups()
+void setup()
 {
   // Debug
   Serial.begin(115200);
@@ -29,110 +28,55 @@ void setups()
   R2M_set_speed_all(MAX_SPEED);
   R2M_release_all();
 
-  // Configure the interrupt on PROXIMITY_INTER_PIN
-  // This interrupt will be triggered by the proximity sensor HC-SR04
-  // We are waiting for any change, either when raising or falling signal on the pin
-  attachInterrupt(digitalPinToInterrupt(PROXIMITY_INTER_PIN), R2C_proximity_watcher, RISING);
-
-  // Startup interrupt function
-  pinMode(POWER_INTER_PIN, INPUT_PULLUP);
-
-  // Enable PCIE0 Bit0 = 1 (Port B)
-  PCICR |= (1 << PCIE1);
-
-  // Select PCINT8 Bit0 = 1 (Pin A0)
-  PCMSK1 = (1 << PCINT8); // A0
+  // Configure the interrupt on PIN_POWER to start the LOOP
+  attachInterrupt(digitalPinToInterrupt(PIN_POWER), R2C_power_watcher_2, RISING);
 
   // Initialize global variables
-  started = false;
+  // delay(500);
+  // started = true;
+  started = 0;
   position = POS_INITIAL;
-  found_block = false;
 
   //
   //
   // print_logo();
 
   // LED definitions
-  pinMode(LED_RED_PIN, OUTPUT);
-  pinMode(LED_GREEN_PIN, OUTPUT);
+  pinMode(PIN_LED_RED, OUTPUT);
+  pinMode(PIN_LED_GREEN, OUTPUT);
 
-  digitalWrite(LED_RED_PIN, HIGH);
-  digitalWrite(LED_GREEN_PIN, LOW);
-}
+  pinMode(PIN_TRIG, OUTPUT);
+  pinMode(PIN_ECHO, INPUT);
 
-// Boolean to represent toggle state for the POWER button
-volatile bool togglestate = false;
-
-ISR(PCINT1_vect)
-{
-  if (started)
-    return;
-
-  togglestate = !togglestate;
-
-  Serial.println("Button Pressed!!");
-
-  // Only acts when release the button
-  if (!togglestate)
-  {
-    // Disable this interrupt for now because we are getting too much noise from the DC motors
-    //    and they are causing the interrupt to auto-trigger ?!?!?!
-    PCMSK1 &= ~(1 << PCINT8);
-    digitalWrite(LED_RED_PIN, LOW);
-    digitalWrite(LED_GREEN_PIN, HIGH);
-    R2C_power_watcher();
-  }
-}
-
-#define trigPin A0
-#define echoPin A1
-
-unsigned long int duration;
-unsigned int distance;
-
-void setup()
-{
-  pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
-  pinMode(echoPin, INPUT);  // Sets the echoPin as an Input
-  Serial.begin(115200);
+  digitalWrite(PIN_LED_RED, HIGH);
+  digitalWrite(PIN_LED_GREEN, LOW);
 }
 
 void loop()
 {
-  // Clears the trigPin
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  // Sets the trigPin on HIGH state for 10 micro seconds
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(echoPin, HIGH);
-  // Calculating the distance
-  distance = duration * 0.034 / 2;
-  // Prints the distance on the Serial Monitor
-
-  Serial.print(">> Duration: ");
-  Serial.println(duration);
-
-  Serial.print("Distance: ");
-  Serial.println(distance);
-  delay(200);
-}
-
-void loops()
-{
-  if (started)
+  if (started < 1)
   {
-    if (found_block)
-    {
-      R2C_read_sensor();
-    }
-    else
-    {
-      R2M_move_fw();
-    }
+    digitalWrite(PIN_LED_RED, HIGH);
+    digitalWrite(PIN_LED_GREEN, LOW);
+    
+    delay(100);
+    return;
   }
+  else
+  {
+    digitalWrite(PIN_LED_RED, LOW);
+    digitalWrite(PIN_LED_GREEN, HIGH);
 
-  delay(100);
+    Serial.print("Distance: ");
+    Serial.println(R2C_get_distance(MIN_NUM_DIST_READS));
+    
+    if (R2C_get_distance(MIN_NUM_DIST_READS) < MIN_VALUE_FOR_BLOCK)
+    {
+      R2C_controller(0);
+      return;
+    }
+
+    R2M_move_fw();
+    delay(10);
+  }
 }

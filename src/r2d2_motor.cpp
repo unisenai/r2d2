@@ -105,14 +105,13 @@ void R2M_rotate_left(uint32_t time)
     delay(time);
     t2 = millis();
 
-    Serial.print(" #### Diff: (t1: ");
-    Serial.print(t1);
-    Serial.print(")    (t2: ");
-    Serial.print(t2);
-    Serial.print(")    (t2 - t1: ");
-    Serial.println((t2 - t1));
-    Serial.print(")");
-
+    // Serial.print(" #### Diff: (t1: ");
+    // Serial.print(t1);
+    // Serial.print(")    (t2: ");
+    // Serial.print(t2);
+    // Serial.print(")    (t2 - t1: ");
+    // Serial.println((t2 - t1));
+    // Serial.print(")");
   }
 
   R2M_release_all();

@@ -14,26 +14,7 @@
 #include "include/r2d2.h"
 #include "include/r2d2_motor.h"
 
-static void R2C_loop_move(R2Direction direction);
-
-volatile bool interrupt_attached = true;
-
-uint16_t sensorValue = MIN_VALUE_FOR_BLOCK;
-
-unsigned long start_timer_block = 0;
-unsigned long end_timer_block = 0;
-
-unsigned long start_timer_free = 0;
-unsigned long end_timer_free = 0;
-
-// Function to watch for the proximity sensor and reacts accordingly
-void R2C_proximity_watcher()
-{
-  // Serial.println(" <<<<< INTERRUPT >>>>>");
-  found_block = true;
-  // read_sensor();
-}
-
+/*
 void R2C_read_sensor()
 {
   delayMicroseconds(5);
@@ -59,7 +40,7 @@ void R2C_read_sensor()
     while (started)
     {
       // We check the sensor to make sure we found a block
-      sensorValue = analogRead(DISTANCE_PIN);
+      sensorValue = analogRead(PIN_DISTANCE);
 
       // Yes, we found a block!
       if (sensorValue > MIN_VALUE_FOR_BLOCK)
@@ -173,13 +154,152 @@ void R2C_read_sensor()
   }
 }
 
+*/
+
 // Function that starts and/or shuts down the AGV
-void R2C_power_watcher()
+void R2C_power_watcher_2()
 {
   Serial.println("Starting!!!!");
 
   // We reset the variables
-  // found_block = false;
   // position = POS_INITIAL;
-  started = true;
+  started++;
+}
+
+uint64_t duration;
+
+uint16_t R2C_get_distance(uint8_t num_avg)
+{
+
+  uint16_t dist_sum;
+  uint16_t dist_tmp;
+
+  if (num_avg < MIN_NUM_DIST_READS)
+    num_avg = MIN_NUM_DIST_READS;
+
+  dist_sum = 0;
+  for (int i = 0; i < num_avg; i++)
+  {
+    // Clears the PIN_TRIG
+    digitalWrite(PIN_TRIG, LOW);
+    delayMicroseconds(2);
+    // Sets the PIN_TRIG on HIGH state for 10 micro seconds
+    digitalWrite(PIN_TRIG, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(PIN_TRIG, LOW);
+    // Reads the PIN_ECHO, returns the sound wave travel time in microseconds
+    duration = pulseIn(PIN_ECHO, HIGH);
+    // Calculating the distance
+    dist_tmp = (duration * 0.034 / 2);
+    if (dist_tmp == 0 || dist_tmp > 100)
+    {
+      num_avg--;
+      continue;
+    }
+
+    dist_sum += dist_tmp;
+  }
+
+  return (dist_sum / num_avg);
+}
+
+/**
+ * We check if we got an erratic read
+ */
+bool is_erratic(bool check_min_distance)
+{
+  // Do another NUM_ERRATIC_CHECKS checks
+  uint16_t dist_sum = 0;
+  for (int j = 0; j <= NUM_ERRATIC_CHECKS; j++)
+  {
+    // We use the default minimum value for the checks avg
+    dist_sum += R2C_get_distance(MIN_NUM_DIST_READS);
+  }
+
+  // If the average of the reads are larger than the minimum distance allowed we just continue, it was an erratic read
+  if ((check_min_distance && (dist_sum / NUM_ERRATIC_CHECKS) > MIN_VALUE_FOR_BLOCK) ||
+      (!check_min_distance && (dist_sum / NUM_ERRATIC_CHECKS) < MIN_VALUE_FOR_BLOCK))
+    return true;
+
+  return false;
+}
+
+void R2C_controller(uint16_t ndist)
+{
+  uint16_t distance = ndist;
+
+  //
+  if (is_erratic(true))
+  {
+    Serial.println("  >>>>>>> ERRATIC <<<<<<<");
+    return;
+  }
+
+  position++;
+  R2M_release_all();
+  delay(DELAY_FOR_CHANGE_DIRECTION);
+
+  unsigned long led_timer_in = 0;
+  unsigned long led_timer_out = 0;
+  bool led_on = false;
+
+  while (true)
+  {
+
+    // Toggle the RED LED
+    {
+      led_timer_out = millis();
+      if (led_timer_in == 0 || (led_timer_out - led_timer_in) >= 100)
+      {
+        if (led_on)
+          digitalWrite(PIN_LED_RED, LOW);
+        else
+          digitalWrite(PIN_LED_RED, HIGH);
+        led_timer_in = millis();
+        led_on = !led_on;
+      }
+    }
+
+    switch (position)
+    {
+    case POS_OBSTACLE_1:
+    case POS_OBSTACLE_2:
+    case POS_OBSTACLE_3:
+      R2M_move_right();
+
+      break; // -- END POS_OBSTACLE_X
+
+    case POS_WALL:
+      R2M_rotate_left(TIME_ANGLE_90);
+      delay(DELAY_FOR_CHANGE_DIRECTION + 200);
+
+      return;
+      break; // -- END POS_WALL
+
+    case POS_END:
+      // We got to the end of the line, time to make sure we FORCE stop
+      R2M_release_all();
+      delay(5000);
+
+      // Now we just change the STARTED flag to FALSE
+      started = -9223372036854775808;
+
+      //
+      return;
+      break; // -- END POS_END
+
+    default:
+      return;
+      break;
+    }
+
+    distance += R2C_get_distance(MIN_NUM_DIST_READS);
+    if (distance > MIN_VALUE_FOR_BLOCK)
+      if (!is_erratic(false))
+      {
+        R2M_release_all();
+        delay(DELAY_FOR_CHANGE_DIRECTION);
+        return;
+      }
+  }
 }

@@ -26,21 +26,15 @@ enum POSITION
 };
 
 // 
-extern volatile bool started;
+extern volatile int64_t started;
 
 // 
-extern volatile int8_t position;
+extern uint8_t position;
 
 // 
-extern volatile bool found_block;
-
-// Function to watch for the proximity sensor and reacts accordingly
-void R2C_proximity_watcher();
 
 // Function that starts and/or shuts down the AGV
-void R2C_power_watcher();
-
-void R2C_read_sensor();
+void R2C_power_watcher_2();
 
 // 
 void print_logo();
@@ -59,5 +53,12 @@ void print_logo();
 void r2d2_print(const uint8_t pos_x, const uint8_t pos_y,
                 const uint8_t size, const uint8_t color,
                 bool render, char *msg);
+
+
+/**
+ * 
+*/
+uint16_t R2C_get_distance(uint8_t num_avg);
+void R2C_controller(uint16_t distance);
 
 #endif  // __R2D2_H__
